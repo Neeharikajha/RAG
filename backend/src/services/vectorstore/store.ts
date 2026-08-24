@@ -48,3 +48,25 @@ export function getDocuments(): DocumentRecord[] {
 export function getAllChunks(): Chunk[] {
   return store.chunks;
 }
+
+//arrows pointing in same direction = high similarity ~ 1
+//right angle -> not similar at all
+//opposite direction -> less similarity ~ -1
+//directional similarity. 
+export function cosineSimilarity(a: number[], b: number[]): number {
+  let dot = 0, magA = 0, magB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    magA += a[i] * a[i];
+    magB += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+}
+
+export function searchSimilar(queryEmbedding: number[], topK: number): Chunk[] {
+  return [...store.chunks]
+    .map((chunk) => ({ chunk, score: cosineSimilarity(queryEmbedding, chunk.embedding) }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK)
+    .map((result) => result.chunk);
+}
