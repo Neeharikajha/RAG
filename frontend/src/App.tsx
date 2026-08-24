@@ -3,9 +3,12 @@ import { UploadDropzone } from "./components/UploadDropzone";
 import { DocumentList } from "./components/DocumentList";
 import { useState } from "react";
 import { ChatWindow } from "./components/ChatWindow";
+import { ContradictionDashboard } from "./components/ContradictionDashboard";
 
 export default function App() {
-  const [tab, setTab] = useState<"upload" | "chat">("upload");
+  const [tab, setTab] = useState<"upload" | "chat" | "contradictions">(
+    "upload",
+  );
   const { documents, isUploading, error, upload } = useDocuments();
 
   return (
@@ -25,6 +28,12 @@ export default function App() {
           >
             Chat
           </button>
+          <button
+            className={tab === "contradictions" ? "tab tab--active" : "tab"}
+            onClick={() => setTab("contradictions")}
+          >
+            Contradictions
+          </button>
         </nav>
       </header>
 
@@ -40,6 +49,7 @@ export default function App() {
       )}
 
       {tab === "chat" && <ChatWindow />}
+      {tab === "contradictions" && <ContradictionDashboard />}
     </div>
   );
 }
