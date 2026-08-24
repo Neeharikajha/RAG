@@ -119,6 +119,28 @@ body {
   align-items: center;
 }
 
+.doc-row__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.doc-row__delete-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--danger);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.doc-row__delete-btn:hover {
+  background: rgba(229, 83, 75, 0.15);
+  border-color: var(--danger);
+}
+
 .doc-row__name {
   font-weight: 500;
 }
@@ -142,6 +164,54 @@ body {
   color: var(--danger);
   background: rgba(229, 83, 75, 0.1);
 }
+
+.upload-progress-list {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.upload-progress-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.upload-progress-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+
+.upload-progress-name {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-progress-pct {
+  font-family: "SFMono-Regular", Menlo, monospace;
+  color: var(--accent);
+}
+
+.upload-progress-bar {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.upload-progress-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.15s ease;
+}
+
 
 .doc-row__meta {
   margin-top: 4px;

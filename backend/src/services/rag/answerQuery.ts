@@ -31,7 +31,8 @@ export async function answerQuery(
   const queryEmbedding = await embedText(query);
 
   // Step 2: retrieve relevant chunks
-  const retrievedChunks = searchSimilar(queryEmbedding, TOP_K);
+  const retrievedChunks = await searchSimilar(queryEmbedding, TOP_K);
+
 
   // Step 3: build the grounded prompt
   const contextBlock = buildContextBlock(retrievedChunks);

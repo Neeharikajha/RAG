@@ -1,13 +1,19 @@
 import { useState, useRef } from "react";
 
+interface UploadingFile {
+  name: string;
+  progress: number;
+}
+
 interface Props {
   onUpload: (files: File[]) => void;
   isUploading: boolean;
+  uploadingFiles?: UploadingFile[];
 }
 
 const ACCEPTED = ".pdf,.docx,.md,.txt";
 
-export function UploadDropzone({ onUpload, isUploading }: Props) {
+export function UploadDropzone({ onUpload, isUploading, uploadingFiles }: Props) {
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -39,9 +45,28 @@ export function UploadDropzone({ onUpload, isUploading }: Props) {
         onChange={(e) => handleFiles(e.target.files)}
       />
       <p className="dropzone__title">
-        {isUploading ? "Ingesting…" : "Drop documents here or click to browse"}
+        {isUploading ? "Uploading..." : "Drop documents here or click to browse"}
       </p>
       <p className="dropzone__hint">PDF, DOCX, MD, TXT</p>
+      {uploadingFiles && uploadingFiles.length > 0 && (
+        <div className="upload-progress-list" onClick={(e) => e.stopPropagation()}>
+          {uploadingFiles.map((file, idx) => (
+            <div key={idx} className="upload-progress-item">
+              <div className="upload-progress-info">
+                <span className="upload-progress-name">{file.name}</span>
+                <span className="upload-progress-pct">{file.progress}%</span>
+              </div>
+              <div className="upload-progress-bar">
+                <div
+                  className="upload-progress-fill"
+                  style={{ width: `${file.progress}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
+

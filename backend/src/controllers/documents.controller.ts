@@ -8,6 +8,8 @@ import {
   updateDocument,
   addChunks,
   getDocuments,
+  deleteDocument as removeDoc,
+  getVectorDbStatus,
 } from "../services/vectorstore/store.js";
 import type { DocumentRecord, Chunk } from "../types/document.js";
 
@@ -20,7 +22,7 @@ export async function uploadDocuments(
     const files = req.files as Express.Multer.File[];
     if (!files?.length) throw new Error("No files uploaded");
 
-    const results: DocumentRecord[] = []; //readonly
+    const results: DocumentRecord[] = [];
 
     for (const file of files) {
       const doc: DocumentRecord = {
@@ -64,7 +66,9 @@ export async function uploadDocuments(
         doc.status = "failed";
         doc.error = (err as Error).message;
       }
+      results.push(doc);
     }
+    res.json({ documents: results });
   } catch (err) {
     next(err);
   }
@@ -73,3 +77,29 @@ export async function uploadDocuments(
 export function listDocuments(_req: Request, res: Response) {
   res.json({ documents: getDocuments() });
 }
+
+export async function deleteDocument(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  try {
+    const id = req.params.id as string;
+    await removeDoc(id);
+    res.json({ success: true, id });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function getVectorStatus(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const status = await getVectorDbStatus();
+    res.json(status);
+  } catch (err) {
+    next(err);
+  }
+}
+
+
+

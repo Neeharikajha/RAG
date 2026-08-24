@@ -30,9 +30,17 @@ export async function upsertContradictions(
   await persist();
 }
 
+export async function removeContradictionsForDoc(documentId: string): Promise<void> {
+  contradictions = contradictions.filter(
+    (c) => c.statementA.documentId !== documentId && c.statementB.documentId !== documentId,
+  );
+  await persist();
+}
+
 export function getAll(): Contradiction[] {
   return contradictions;
 }
+
 
 export async function updateStatus(
   id: string,

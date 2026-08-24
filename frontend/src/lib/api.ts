@@ -7,14 +7,46 @@ import type {
 
 export async function uploadDocuments(
   files: File[],
+  onProgress?: (percent: number) => void,
 ): Promise<DocumentRecord[]> {
-  const formData = new FormData();
-  files.forEach((file) => formData.append("files", file));
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
 
-  const res = await fetch("/api/documents", { method: "POST", body: formData });
-  if (!res.ok) throw new Error((await res.json()).error ?? "Upload failed");
-  const data = await res.json();
-  return data.documents;
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      };
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          resolve(JSON.parse(xhr.responseText).documents);
+        } catch {
+          reject(new Error("Invalid server response"));
+        }
+      } else {
+        try {
+          reject(new Error(JSON.parse(xhr.responseText).error ?? "Upload failed"));
+        } catch {
+          reject(new Error("Upload failed"));
+        }
+      }
+    };
+
+    xhr.onerror = () => reject(new Error("Network error"));
+    xhr.open("POST", "/api/documents");
+    xhr.send(formData);
+  });
+}
+
+export async function deleteDocument(id: string): Promise<void> {
+  const res = await fetch(`/api/documents/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Failed to delete document");
 }
 
 export async function listDocuments(): Promise<DocumentRecord[]> {
@@ -23,6 +55,7 @@ export async function listDocuments(): Promise<DocumentRecord[]> {
   const data = await res.json();
   return data.documents;
 }
+
 
 export async function sendChatMessage(query: string, history: ChatMessage[]) {
   const res = await fetch("/api/chat", {

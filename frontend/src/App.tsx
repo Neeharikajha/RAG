@@ -9,7 +9,7 @@ export default function App() {
   const [tab, setTab] = useState<"upload" | "chat" | "contradictions">(
     "upload",
   );
-  const { documents, isUploading, error, upload } = useDocuments();
+  const { documents, isUploading, uploadingFiles, error, upload, remove } = useDocuments();
 
   return (
     <div className="page">
@@ -37,19 +37,27 @@ export default function App() {
         </nav>
       </header>
 
-      {tab === "upload" && (
-        <>
-          <UploadDropzone onUpload={upload} isUploading={isUploading} />
-          {error && <p className="error-banner">{error}</p>}
-          <section className="library">
-            <h2>Document Library</h2>
-            <DocumentList documents={documents} />
-          </section>
-        </>
-      )}
+      <div style={{ display: tab === "upload" ? "block" : "none" }}>
+        <UploadDropzone
+          onUpload={upload}
+          isUploading={isUploading}
+          uploadingFiles={uploadingFiles}
+        />
+        {error && <p className="error-banner">{error}</p>}
+        <section className="library">
+          <h2>Document Library</h2>
+          <DocumentList documents={documents} onDelete={remove} />
+        </section>
+      </div>
 
-      {tab === "chat" && <ChatWindow />}
-      {tab === "contradictions" && <ContradictionDashboard />}
+      <div style={{ display: tab === "chat" ? "block" : "none" }}>
+        <ChatWindow />
+      </div>
+
+      <div style={{ display: tab === "contradictions" ? "block" : "none" }}>
+        <ContradictionDashboard />
+      </div>
+
     </div>
   );
 }
