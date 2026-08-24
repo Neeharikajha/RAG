@@ -15,24 +15,47 @@ export function getFileType(fileName: string): FileType {
   return ext as FileType;
 }
 
+export interface ParsedPage {
+  pageNumber: number;
+  text: string;
+}
+
+export interface ParsedFileResult {
+  fullText: string;
+  pages: ParsedPage[];
+}
+
 export async function parseFile(
   filePath: string,
   fileType: FileType,
-): Promise<string> {
+): Promise<ParsedFileResult> {
   try {
     switch (fileType) {
       case "pdf": {
         const buffer = await fs.readFile(filePath);
-        const { text } = await pdfParse(buffer);
-        return text;
+        const pages: ParsedPage[] = [];
+        const options = {
+          pagerender: (pageData: any) =>
+            pageData.getTextContent().then((tc: any) => {
+              const text = tc.items.map((i: any) => i.str).join(" ");
+              const pageNumber = pageData.pageIndex + 1;
+              pages.push({ pageNumber, text });
+              return text;
+            }),
+        };
+        const res = await pdfParse(buffer, options);
+        pages.sort((a, b) => a.pageNumber - b.pageNumber);
+        return { fullText: res.text, pages };
       }
       case "docx": {
         const { value } = await mammoth.extractRawText({ path: filePath });
-        return value;
+        return { fullText: value, pages: [{ pageNumber: 1, text: value }] };
       }
       case "md":
-      case "txt":
-        return await fs.readFile(filePath, "utf-8");
+      case "txt": {
+        const content = await fs.readFile(filePath, "utf-8");
+        return { fullText: content, pages: [{ pageNumber: 1, text: content }] };
+      }
     }
   } catch (err) {
     throw new Error(
@@ -40,3 +63,4 @@ export async function parseFile(
     );
   }
 }
+

@@ -11,7 +11,7 @@ export function ChatBubble({ message }: { message: ChatMessage }) {
           <ul>
             {message.sources.map((s, i) => (
               <li key={i}>
-                {s.fileName} — chunk {s.chunkIndex}
+                {s.fileName} — Page {s.pageNumber ?? s.chunkIndex + 1}
               </li>
             ))}
           </ul>
@@ -20,3 +20,4 @@ export function ChatBubble({ message }: { message: ChatMessage }) {
     </div>
   );
 }
+

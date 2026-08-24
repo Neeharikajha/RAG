@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { randomUUID } from "crypto";
 import { getFileType, parseFile } from "../services/ingestion/parseFile.js";
-import { chunkText } from "../services/ingestion/chunker.js";
+import { chunkPages } from "../services/ingestion/chunker.js";
 import { embedChunks } from "../services/embeddings/embed.js";
 import {
   addDocument,
@@ -38,18 +38,21 @@ export async function uploadDocuments(
         doc.fileType = fileType;
         await addDocument(doc);
 
-        const text = await parseFile(file.path, fileType);
-        const textChunks = chunkText(text);
-        const embeddings = await embedChunks(textChunks);
+        const parsed = await parseFile(file.path, fileType);
+        const pageChunks = chunkPages(parsed.pages);
+        const embeddings = await embedChunks(pageChunks.map((c) => c.text));
 
-        const chunks: Chunk[] = textChunks.map((text, i) => ({
+
+        const chunks: Chunk[] = pageChunks.map((pc, i) => ({
           id: `${doc.id}-${i}`,
           documentId: doc.id,
           fileName: doc.fileName,
-          text,
+          text: pc.text,
           chunkIndex: i,
+          pageNumber: pc.pageNumber,
           embedding: embeddings[i],
         }));
+
 
         await addChunks(chunks);
         await updateDocument(doc.id, {

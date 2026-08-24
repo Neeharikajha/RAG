@@ -14,5 +14,6 @@ export interface Chunk {
     fileName: string;
     text: string;
     chunkIndex : number;
+    pageNumber?: number;
     embedding : number[];  //vector represntation, fill after embedding step
-}
+}

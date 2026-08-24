@@ -2,8 +2,10 @@ export interface SourceCitation {
   documentId: string;
   fileName: string;
   chunkIndex: number;
+  pageNumber?: number;
   text: string;
 }
+
 
 export interface ChatMessage {
   role: "user" | "assistant";

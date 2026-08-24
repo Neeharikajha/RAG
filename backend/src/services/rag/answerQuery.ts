@@ -13,15 +13,17 @@ function buildContextBlock(chunks: Chunk[]): string {
   return chunks
     .map(
       (c, i) =>
-        `[${i + 1}] (Source: ${c.fileName}, chunk ${c.chunkIndex})\n${c.text}`,
+        `[${i + 1}] (Source: ${c.fileName}, Page ${c.pageNumber ?? c.chunkIndex + 1})\n${c.text}`,
     )
     .join("\n\n");
 }
 
-const SYSTEM_PROMPT = `You are a document assistant. Answer the user's question using ONLY the
-numbered context provided below. If the answer isn't in the context, say
-you don't know — do not make anything up. When you use information from
-the context, cite it inline like [1], [2], matching the source numbers.`;
+const SYSTEM_PROMPT = `You are a helpful document intelligence assistant.
+Answer the user's question clearly, accurately, and directly based on the provided context below.
+- Recognize semantic equivalents and synonyms (for example: "holiday" = "leave / paid time off / PTO", "cost" = "price / fee", "salary" = "compensation").
+- Reason over the facts in the context to provide a full, helpful answer.
+- Always cite your sources inline using [1], [2], matching the numbered context blocks.
+- Only say you don't know if the topic is completely absent from the context.`;
 
 export async function answerQuery(
   query: string,
@@ -33,7 +35,6 @@ export async function answerQuery(
   // Step 2: retrieve relevant chunks
   const retrievedChunks = await searchSimilar(queryEmbedding, TOP_K);
 
-
   // Step 3: build the grounded prompt
   const contextBlock = buildContextBlock(retrievedChunks);
   const messages: ChatMessage[] = [
@@ -41,7 +42,7 @@ export async function answerQuery(
     {
       role: "assistant",
       content:
-        "Understood. I'll answer using only that context and cite sources.",
+        "Understood. I'll answer using the context provided and cite sources inline.",
     },
     ...history,
     { role: "user", content: query },
@@ -54,8 +55,10 @@ export async function answerQuery(
     documentId: c.documentId,
     fileName: c.fileName,
     chunkIndex: c.chunkIndex,
+    pageNumber: c.pageNumber ?? c.chunkIndex + 1,
     text: c.text,
   }));
+
 
   return { answer, sources };
 }
