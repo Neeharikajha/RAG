@@ -1,7 +1,8 @@
-import { findCandidatePairs } from "./findCandidates";
-import { judgeContradiction } from "./judgeContradiction";
-import { upsertContradictions, getAll } from "./store";
-import type { Contradiction } from "../../types/contradiction";
+import { findCandidatePairs } from "./findCandidates.js";
+import { judgeContradiction } from "./judgeContradiction.js";
+import { upsertContradictions, getAll } from "./store.js";
+import type { Contradiction } from "../../types/contradiction.js";
+
 
 export async function scanForContradictions(): Promise<Contradiction[]> {
   const candidates = findCandidatePairs();

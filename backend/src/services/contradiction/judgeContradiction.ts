@@ -1,6 +1,7 @@
-import { generateAnswer } from "../llm/groq";
-import type { CandidatePair } from "./findCandidates";
-import type { ContradictionType, Severity } from "../../types/contradiction";
+import { generateAnswer } from "../llm/groq.js";
+import type { CandidatePair } from "./findCandidates.js";
+import type { ContradictionType, Severity } from "../../types/contradiction.js";
+
 
 const JUDGE_PROMPT = `You compare two statements from different documents and decide if they
 genuinely contradict each other.
