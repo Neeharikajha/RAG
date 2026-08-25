@@ -28,22 +28,29 @@ Answer the user's question clearly, accurately, and directly based on the provid
 - Always cite your sources inline using [1], [2], matching the numbered context blocks.
 - Only say you don't know if the topic is completely absent from the context.`;
 
+import { getCachedValue, setCachedValue } from "../cache/redis.js";
+
 export async function answerQuery(
   query: string,
   history: ChatMessage[] = [],
 ): Promise<ChatResponse> {
+  const cacheKey = `rag:answer:${query.toLowerCase().trim()}`;
+  const cached = await getCachedValue<ChatResponse>(cacheKey);
+  if (cached) return cached;
+
   // Step 1: embed the query
   const queryEmbedding = await embedText(query);
 
   // Step 2: retrieve relevant chunks
   const retrievedChunks = await searchSimilar(queryEmbedding, TOP_K);
   if (!retrievedChunks.length) {
-    return {
+    const fallbackResult = {
       answer: "I couldn't find any relevant information in the uploaded documents.",
       sources: [],
     };
+    await setCachedValue(cacheKey, fallbackResult, 1800);
+    return fallbackResult;
   }
-
 
   // Step 3: build the grounded prompt
   const contextBlock = buildContextBlock(retrievedChunks);
@@ -55,13 +62,11 @@ export async function answerQuery(
         "Understood. I'll answer using the context provided and cite sources inline.",
     },
     ...history.slice(-4),
-
     { role: "user", content: query },
   ];
 
   // Step 4: generate the answer
   const answer = await generateAnswer(messages);
-
   const sources: SourceCitation[] = retrievedChunks.map((c) => ({
     documentId: c.documentId,
     fileName: c.fileName,
@@ -70,31 +75,42 @@ export async function answerQuery(
     text: c.text,
   }));
 
-  return { answer, sources };
+  const responsePayload = { answer, sources };
+  await setCachedValue(cacheKey, responsePayload, 3600);
+  return responsePayload;
 }
-
 
 export async function streamQuery(
   query: string,
   history: ChatMessage[] = [],
   res: Response,
 ): Promise<void> {
-  const queryEmbedding = await embedText(query);
-  const retrievedChunks = await searchSimilar(queryEmbedding, TOP_K);
-
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
 
-  if (!retrievedChunks.length) {
-    res.write(
-      `data: ${JSON.stringify({
-        answer: "I couldn't find any relevant information in the uploaded documents.",
-        sources: [],
-      })}\n\n`,
-    );
+  const cacheKey = `rag:answer:${query.toLowerCase().trim()}`;
+  const cached = await getCachedValue<ChatResponse>(cacheKey);
+  if (cached) {
+    res.write(`data: ${JSON.stringify({ sources: cached.sources })}\n\n`);
+    res.write(`data: ${JSON.stringify({ answer: cached.answer })}\n\n`);
     res.write("data: [DONE]\n\n");
     res.end();
+    return;
+  }
+
+  const queryEmbedding = await embedText(query);
+  const retrievedChunks = await searchSimilar(queryEmbedding, TOP_K);
+
+  if (!retrievedChunks.length) {
+    const fallback = {
+      answer: "I couldn't find any relevant information in the uploaded documents.",
+      sources: [],
+    };
+    res.write(`data: ${JSON.stringify(fallback)}\n\n`);
+    res.write("data: [DONE]\n\n");
+    res.end();
+    await setCachedValue(cacheKey, fallback, 1800);
     return;
   }
 
@@ -117,15 +133,19 @@ export async function streamQuery(
         "Understood. I'll answer using the context provided and cite sources inline.",
     },
     ...history.slice(-4),
-
     { role: "user", content: query },
   ];
 
-  await generateAnswerStream(messages, (delta) => {
+  const fullAnswer = await generateAnswerStream(messages, (delta) => {
     res.write(`data: ${JSON.stringify({ delta })}\n\n`);
   });
 
   res.write("data: [DONE]\n\n");
   res.end();
+
+  if (fullAnswer) {
+    await setCachedValue(cacheKey, { answer: fullAnswer, sources }, 3600);
+  }
 }
+
 

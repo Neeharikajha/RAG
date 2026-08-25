@@ -60,11 +60,15 @@ export async function updateDocument(
   await persist();
 }
 
+import { invalidateCachePattern } from "../cache/redis.js";
+
 export async function deleteDocument(id: string): Promise<void> {
   store.documents = store.documents.filter((d) => d.id !== id);
   store.chunks = store.chunks.filter((c) => c.documentId !== id);
   await persist();
   await removeContradictionsForDoc(id);
+  await invalidateCachePattern("rag:answer:*");
+
 
   const collection = await getChromaCollection();
   if (collection) {

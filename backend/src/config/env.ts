@@ -15,4 +15,6 @@ export const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
 export const GROQ_MODEL = "openai/gpt-oss-20b";
 
 export const CHROMA_URL = process.env.CHROMA_URL || "http://localhost:8000";
+export const REDIS_URL = process.env.REDIS_URL || "redis://127.0.0.1:6379";
+
 
