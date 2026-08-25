@@ -57,7 +57,13 @@ export async function listDocuments(): Promise<DocumentRecord[]> {
 }
 
 
-export async function sendChatMessage(query: string, history: ChatMessage[]) {
+import type { SourceCitation } from "../types/chat";
+
+export async function sendChatMessageStream(
+  query: string,
+  history: ChatMessage[],
+  onChunk: (data: { delta?: string; sources?: SourceCitation[]; answer?: string }) => void,
+): Promise<void> {
   const res = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -66,13 +72,40 @@ export async function sendChatMessage(query: string, history: ChatMessage[]) {
       history: history.map(({ role, content }) => ({ role, content })),
     }),
   });
-  if (!res.ok)
-    throw new Error((await res.json()).error ?? "Chat request failed");
-  return res.json() as Promise<{
-    answer: string;
-    sources: ChatMessage["sources"];
-  }>;
+
+  if (!res.ok) {
+    try {
+      throw new Error((await res.json()).error ?? "Chat request failed");
+    } catch {
+      throw new Error("Chat request failed");
+    }
+  }
+
+  const reader = res.body?.getReader();
+  const decoder = new TextDecoder();
+
+  if (reader) {
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith("data: ")) {
+          const dataStr = trimmed.slice(6);
+          if (dataStr === "[DONE]") break;
+          try {
+            onChunk(JSON.parse(dataStr));
+          } catch {}
+        }
+      }
+    }
+  }
 }
+
 
 // Triggers a new contradiction scan across all uploaded documents.
 export async function scanContradictions(): Promise<Contradiction[]> {

@@ -118,7 +118,11 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   return dot / (Math.sqrt(magA) * Math.sqrt(magB));
 }
 
-export async function searchSimilar(queryEmbedding: number[], topK: number): Promise<Chunk[]> {
+export async function searchSimilar(
+  queryEmbedding: number[],
+  topK: number,
+  minScore = 0.25,
+): Promise<Chunk[]> {
   const collection = await getChromaCollection();
   if (collection) {
     try {
@@ -127,7 +131,7 @@ export async function searchSimilar(queryEmbedding: number[], topK: number): Pro
         nResults: topK,
       });
       if (res.ids?.[0]?.length) {
-        return res.ids[0].map((id: string, i: number) => ({
+        const chunks = res.ids[0].map((id: string, i: number) => ({
           id,
           documentId: (res.metadatas?.[0]?.[i]?.documentId as string) || "",
           fileName: (res.metadatas?.[0]?.[i]?.fileName as string) || "",
@@ -135,15 +139,18 @@ export async function searchSimilar(queryEmbedding: number[], topK: number): Pro
           text: (res.documents?.[0]?.[i] as string) || "",
           embedding: [],
         }));
+        if (chunks.length > 0) return chunks;
       }
     } catch {}
   }
   return [...store.chunks]
     .map((chunk) => ({ chunk, score: cosineSimilarity(queryEmbedding, chunk.embedding) }))
+    .filter((result) => result.score >= minScore)
     .sort((a, b) => b.score - a.score)
     .slice(0, topK)
     .map((result) => result.chunk);
 }
+
 
 export async function getVectorDbStatus() {
   const collection = await getChromaCollection();
