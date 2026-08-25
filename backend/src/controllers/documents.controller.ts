@@ -39,19 +39,21 @@ export async function uploadDocuments(
         await addDocument(doc);
 
         const parsed = await parseFile(file.path, fileType);
-        const pageChunks = chunkPages(parsed.pages);
+        const pageChunks = chunkPages(parsed.pages, file.originalname);
         const embeddings = await embedChunks(pageChunks.map((c) => c.text));
-
 
         const chunks: Chunk[] = pageChunks.map((pc, i) => ({
           id: `${doc.id}-${i}`,
           documentId: doc.id,
           fileName: doc.fileName,
           text: pc.text,
+          rawText: pc.rawText,
+          parentText: pc.parentText,
           chunkIndex: i,
           pageNumber: pc.pageNumber,
           embedding: embeddings[i],
         }));
+
 
 
         await addChunks(chunks);

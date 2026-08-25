@@ -2,6 +2,8 @@ import { CHUNK_SIZE, CHUNK_OVERLAP } from "../../config/env.js";
 
 export interface PageChunk {
   text: string;
+  rawText: string;
+  parentText: string;
   pageNumber: number;
 }
 
@@ -24,13 +26,23 @@ export function chunkText(text: string): string[] {
   return chunks;
 }
 
-export function chunkPages(pages: { pageNumber: number; text: string }[]): PageChunk[] {
+export function chunkPages(
+  pages: { pageNumber: number; text: string }[],
+  fileName: string,
+): PageChunk[] {
   const result: PageChunk[] = [];
   for (const page of pages) {
     const textChunks = chunkText(page.text);
-    for (const text of textChunks) {
-      result.push({ text, pageNumber: page.pageNumber });
+    for (const rawText of textChunks) {
+      const enrichedText = `[Document: ${fileName} | Page ${page.pageNumber}]\n${rawText}`;
+      result.push({
+        text: enrichedText,
+        rawText,
+        parentText: page.text,
+        pageNumber: page.pageNumber,
+      });
     }
   }
   return result;
-}
+}
+

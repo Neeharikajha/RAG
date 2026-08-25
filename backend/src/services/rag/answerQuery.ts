@@ -15,10 +15,11 @@ function buildContextBlock(chunks: Chunk[]): string {
   return chunks
     .map(
       (c, i) =>
-        `[${i + 1}] (Source: ${c.fileName}, Page ${c.pageNumber ?? c.chunkIndex + 1})\n${c.text}`,
+        `[${i + 1}] (Source: ${c.fileName}, Page ${c.pageNumber ?? c.chunkIndex + 1})\n${c.parentText || c.text}`,
     )
     .join("\n\n");
 }
+
 
 const SYSTEM_PROMPT = `You are a helpful document intelligence assistant.
 Answer the user's question clearly, accurately, and directly based on the provided context below.

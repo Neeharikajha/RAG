@@ -13,7 +13,10 @@ export interface Chunk {
     documentId: string;
     fileName: string;
     text: string;
+    rawText?: string;
+    parentText?: string;
     chunkIndex : number;
     pageNumber?: number;
-    embedding : number[];  //vector represntation, fill after embedding step
-}
+    embedding : number[];  //vector representation, fill after embedding step
+}
+
