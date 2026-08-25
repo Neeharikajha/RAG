@@ -62,6 +62,12 @@ export function getAll(): Contradiction[] {
   return contradictions;
 }
 
+export async function clearAllContradictions(): Promise<void> {
+  contradictions = [];
+  await persist();
+}
+
+
 
 export async function updateStatus(
   id: string,

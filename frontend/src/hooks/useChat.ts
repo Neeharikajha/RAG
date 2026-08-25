@@ -38,6 +38,23 @@ export function useChat() {
         setError((err as Error).message);
       } finally {
         setIsSending(false);
+        // Ensure no empty assistant bubble remains
+        setMessages((prev) => {
+          const next = [...prev];
+          const lastIndex = next.length - 1;
+          if (
+            lastIndex >= 0 &&
+            next[lastIndex].role === "assistant" &&
+            !next[lastIndex].content.trim()
+          ) {
+            next[lastIndex] = {
+              ...next[lastIndex],
+              content: "I couldn't find any relevant information in the uploaded documents.",
+              sources: [],
+            };
+          }
+          return next;
+        });
       }
     },
     [messages],
@@ -45,4 +62,3 @@ export function useChat() {
 
   return { messages, isSending, error, sendMessage };
 }
-

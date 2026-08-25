@@ -1,8 +1,10 @@
 import fs from "fs/promises";
 import { ChromaClient } from "chromadb";
 import { DATA_FILE, CHROMA_URL } from "../../config/env.js";
-import { removeContradictionsForDoc } from "../contradiction/store.js";
 import type { Chunk, DocumentRecord } from "../../types/document.js";
+
+
+
 
 interface StoreShape {
   documents: DocumentRecord[];
@@ -61,13 +63,18 @@ export async function updateDocument(
 }
 
 import { invalidateCachePattern } from "../cache/redis.js";
+import { removeContradictionsForDoc, clearAllContradictions } from "../contradiction/store.js";
 
 export async function deleteDocument(id: string): Promise<void> {
   store.documents = store.documents.filter((d) => d.id !== id);
   store.chunks = store.chunks.filter((c) => c.documentId !== id);
   await persist();
   await removeContradictionsForDoc(id);
+  if (store.documents.length === 0) {
+    await clearAllContradictions();
+  }
   await invalidateCachePattern("rag:answer:*");
+
 
 
   const collection = await getChromaCollection();

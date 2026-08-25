@@ -1,25 +1,45 @@
 import type { Response } from "express";
+import type { ChatMessage, ChatResponse, SourceCitation } from "../../types/chat.js";
+import type { Chunk } from "../../types/document.js";
 import { embedText } from "../embeddings/embed.js";
 import { searchSimilar } from "../vectorstore/store.js";
 import { generateAnswer, generateAnswerStream } from "../llm/groq.js";
 import { TOP_K } from "../../config/env.js";
-import type {
-  ChatMessage,
-  ChatResponse,
-  SourceCitation,
-} from "../../types/chat.js";
-import type { Chunk } from "../../types/document.js";
-
 
 function buildContextBlock(chunks: Chunk[]): string {
   return chunks
-    .map(
-      (c, i) =>
-        `[${i + 1}] (Source: ${c.fileName}, Page ${c.pageNumber ?? c.chunkIndex + 1})\n${c.parentText || c.text}`,
-    )
+    .map((chunk, index) => {
+      const header = `[${index + 1}] Document: ${chunk.fileName} (Page ${
+        chunk.pageNumber ?? chunk.chunkIndex + 1
+      })`;
+      const textToUse = chunk.parentText || chunk.text;
+      return `${header}\n${textToUse}`;
+    })
     .join("\n\n");
 }
 
+function extractCitedSources(answer: string, chunks: Chunk[]): SourceCitation[] {
+  if (!answer) return [];
+  const isNegative = /don't have|didn't find|no information|not mentioned|couldn't find|unrelated/i.test(answer);
+  if (isNegative) return [];
+
+  const matches = Array.from(answer.matchAll(/\[(\d+)\]/g));
+  const citedIndices = Array.from(new Set(matches.map((m) => parseInt(m[1], 10))))
+    .filter((n) => !isNaN(n) && n > 0 && n <= chunks.length);
+
+  if (citedIndices.length === 0) return [];
+
+  return citedIndices.map((idx) => {
+    const c = chunks[idx - 1];
+    return {
+      documentId: c.documentId,
+      fileName: c.fileName,
+      chunkIndex: c.chunkIndex,
+      pageNumber: c.pageNumber ?? c.chunkIndex + 1,
+      text: c.text,
+    };
+  });
+}
 
 const SYSTEM_PROMPT = `You are a helpful document intelligence assistant.
 Answer the user's question clearly, accurately, and directly based on the provided context below.
@@ -29,9 +49,6 @@ Answer the user's question clearly, accurately, and directly based on the provid
 - Always cite your sources inline using [1], [2], matching the numbered context blocks.
 - When generating Markdown tables: keep every table row strictly on a single markdown table line. Do NOT output raw HTML tags (like <br> or <br/>) or newlines inside table cells. Use semicolons or inline text (e.g., "Policy A; Policy B") inside table cells.
 - Only say you don't know if the topic is completely absent from the context.`;
-
-
-
 
 import { getCachedValue, setCachedValue } from "../cache/redis.js";
 
@@ -43,10 +60,7 @@ export async function answerQuery(
   const cached = await getCachedValue<ChatResponse>(cacheKey);
   if (cached) return cached;
 
-  // Step 1: embed the query
   const queryEmbedding = await embedText(query);
-
-  // Step 2: retrieve relevant chunks
   const retrievedChunks = await searchSimilar(queryEmbedding, TOP_K);
   if (!retrievedChunks.length) {
     return {
@@ -55,8 +69,6 @@ export async function answerQuery(
     };
   }
 
-
-  // Step 3: build the grounded prompt
   const contextBlock = buildContextBlock(retrievedChunks);
   const messages: ChatMessage[] = [
     { role: "user", content: `${SYSTEM_PROMPT}\n\nContext:\n${contextBlock}` },
@@ -69,15 +81,8 @@ export async function answerQuery(
     { role: "user", content: query },
   ];
 
-  // Step 4: generate the answer
   const answer = await generateAnswer(messages);
-  const sources: SourceCitation[] = retrievedChunks.map((c) => ({
-    documentId: c.documentId,
-    fileName: c.fileName,
-    chunkIndex: c.chunkIndex,
-    pageNumber: c.pageNumber ?? c.chunkIndex + 1,
-    text: c.text,
-  }));
+  const sources = extractCitedSources(answer, retrievedChunks);
 
   const responsePayload = { answer, sources };
   await setCachedValue(cacheKey, responsePayload, 3600);
@@ -117,17 +122,6 @@ export async function streamQuery(
     return;
   }
 
-
-  const sources: SourceCitation[] = retrievedChunks.map((c) => ({
-    documentId: c.documentId,
-    fileName: c.fileName,
-    chunkIndex: c.chunkIndex,
-    pageNumber: c.pageNumber ?? c.chunkIndex + 1,
-    text: c.text,
-  }));
-
-  res.write(`data: ${JSON.stringify({ sources })}\n\n`);
-
   const contextBlock = buildContextBlock(retrievedChunks);
   const messages: ChatMessage[] = [
     { role: "user", content: `${SYSTEM_PROMPT}\n\nContext:\n${contextBlock}` },
@@ -144,6 +138,8 @@ export async function streamQuery(
     res.write(`data: ${JSON.stringify({ delta })}\n\n`);
   });
 
+  const sources = extractCitedSources(fullAnswer || "", retrievedChunks);
+  res.write(`data: ${JSON.stringify({ sources })}\n\n`);
   res.write("data: [DONE]\n\n");
   res.end();
 
@@ -151,5 +147,3 @@ export async function streamQuery(
     await setCachedValue(cacheKey, { answer: fullAnswer, sources }, 3600);
   }
 }
-
-

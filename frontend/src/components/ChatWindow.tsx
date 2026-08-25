@@ -1,10 +1,19 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useChat } from "../hooks/useChat";
 import { ChatBubble } from "./ChatBubble";
 
 export function ChatWindow() {
   const { messages, isSending, error, sendMessage } = useChat();
   const [input, setInput] = useState("");
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isSending]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,6 +34,7 @@ export function ChatWindow() {
           <ChatBubble key={i} message={m} />
         ))}
         {isSending && <p className="text-blue-600 font-semibold text-sm animate-pulse">Thinking…</p>}
+        <div ref={messagesEndRef} />
       </div>
 
       {error && (
