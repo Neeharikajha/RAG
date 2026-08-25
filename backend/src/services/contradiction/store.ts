@@ -7,9 +7,24 @@ import type {
 const FILE = "data/contradictions.json";
 let contradictions: Contradiction[] = [];
 
+function getDedupeKey(c: Contradiction): string {
+  const textA = c.statementA.text.trim();
+  const textB = c.statementB.text.trim();
+  return [textA, textB].sort().join("||");
+}
+
 export async function loadContradictions(): Promise<void> {
   try {
-    contradictions = JSON.parse(await fs.readFile(FILE, "utf-8"));
+    const raw: Contradiction[] = JSON.parse(await fs.readFile(FILE, "utf-8"));
+    const seen = new Set<string>();
+    contradictions = [];
+    for (const item of raw) {
+      const key = getDedupeKey(item);
+      if (!seen.has(key)) {
+        seen.add(key);
+        contradictions.push(item);
+      }
+    }
   } catch {
     contradictions = [];
   }
@@ -19,16 +34,22 @@ async function persist(): Promise<void> {
   await fs.writeFile(FILE, JSON.stringify(contradictions, null, 2));
 }
 
-// Adds newly-detected contradictions, skipping any whose id already
-// exists (same chunk pair) so a manually-set status isn't reset.
 export async function upsertContradictions(
   newOnes: Contradiction[],
 ): Promise<void> {
-  const existingIds = new Set(contradictions.map((c) => c.id));
-  const toAdd = newOnes.filter((c) => !existingIds.has(c.id));
+  const existingKeys = new Set(contradictions.map((c) => getDedupeKey(c)));
+  const toAdd: Contradiction[] = [];
+  for (const c of newOnes) {
+    const key = getDedupeKey(c);
+    if (!existingKeys.has(key)) {
+      existingKeys.add(key);
+      toAdd.push(c);
+    }
+  }
   contradictions.push(...toAdd);
   await persist();
 }
+
 
 export async function removeContradictionsForDoc(documentId: string): Promise<void> {
   contradictions = contradictions.filter(

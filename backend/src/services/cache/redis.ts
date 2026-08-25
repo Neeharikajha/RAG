@@ -13,7 +13,9 @@ export const redisClient = new Redis(REDIS_URL, {
 redisClient.on("connect", () => {
   isRedisAvailable = true;
   console.log("Connected to Redis server at", REDIS_URL);
+  invalidateCachePattern("rag:answer:*").catch(() => {});
 });
+
 
 redisClient.on("error", () => {
   isRedisAvailable = false;

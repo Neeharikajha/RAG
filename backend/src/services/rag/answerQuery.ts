@@ -23,10 +23,15 @@ function buildContextBlock(chunks: Chunk[]): string {
 
 const SYSTEM_PROMPT = `You are a helpful document intelligence assistant.
 Answer the user's question clearly, accurately, and directly based on the provided context below.
+- Strict Scope Control: Answer ONLY what the user explicitly asked about. If the user asks about "leave policies", include ONLY leave, vacation, PTO, or leave-related rules. Do NOT include unrelated topics (such as salary, probation, health insurance, or lunch breaks) even if they appear in the retrieved context blocks.
 - Recognize semantic equivalents and synonyms (for example: "holiday" = "leave / paid time off / PTO", "cost" = "price / fee", "salary" = "compensation").
 - Reason over the facts in the context to provide a full, helpful answer.
 - Always cite your sources inline using [1], [2], matching the numbered context blocks.
+- When generating Markdown tables: keep every table row strictly on a single markdown table line. Do NOT output raw HTML tags (like <br> or <br/>) or newlines inside table cells. Use semicolons or inline text (e.g., "Policy A; Policy B") inside table cells.
 - Only say you don't know if the topic is completely absent from the context.`;
+
+
+
 
 import { getCachedValue, setCachedValue } from "../cache/redis.js";
 
@@ -44,13 +49,12 @@ export async function answerQuery(
   // Step 2: retrieve relevant chunks
   const retrievedChunks = await searchSimilar(queryEmbedding, TOP_K);
   if (!retrievedChunks.length) {
-    const fallbackResult = {
+    return {
       answer: "I couldn't find any relevant information in the uploaded documents.",
       sources: [],
     };
-    await setCachedValue(cacheKey, fallbackResult, 1800);
-    return fallbackResult;
   }
+
 
   // Step 3: build the grounded prompt
   const contextBlock = buildContextBlock(retrievedChunks);
@@ -110,9 +114,9 @@ export async function streamQuery(
     res.write(`data: ${JSON.stringify(fallback)}\n\n`);
     res.write("data: [DONE]\n\n");
     res.end();
-    await setCachedValue(cacheKey, fallback, 1800);
     return;
   }
+
 
   const sources: SourceCitation[] = retrievedChunks.map((c) => ({
     documentId: c.documentId,

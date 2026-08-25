@@ -125,7 +125,7 @@ export function cosineSimilarity(a: number[], b: number[]): number {
 export async function searchSimilar(
   queryEmbedding: number[],
   topK: number,
-  minScore = 0.25,
+  minScore = 0.05,
 ): Promise<Chunk[]> {
   const collection = await getChromaCollection();
   if (collection) {
@@ -135,25 +135,41 @@ export async function searchSimilar(
         nResults: topK,
       });
       if (res.ids?.[0]?.length) {
-        const chunks = res.ids[0].map((id: string, i: number) => ({
-          id,
-          documentId: (res.metadatas?.[0]?.[i]?.documentId as string) || "",
-          fileName: (res.metadatas?.[0]?.[i]?.fileName as string) || "",
-          chunkIndex: (res.metadatas?.[0]?.[i]?.chunkIndex as number) || 0,
-          text: (res.documents?.[0]?.[i] as string) || "",
-          embedding: [],
-        }));
+        const chunks = res.ids[0].map((id: string, i: number) => {
+          const docId = (res.metadatas?.[0]?.[i]?.documentId as string) || "";
+          const memoryChunk = store.chunks.find((c) => c.id === id);
+          return {
+            id,
+            documentId: docId,
+            fileName: (res.metadatas?.[0]?.[i]?.fileName as string) || memoryChunk?.fileName || "",
+            chunkIndex: (res.metadatas?.[0]?.[i]?.chunkIndex as number) || 0,
+            text: (res.documents?.[0]?.[i] as string) || memoryChunk?.text || "",
+            parentText: memoryChunk?.parentText,
+            rawText: memoryChunk?.rawText,
+            embedding: [],
+          };
+        });
         if (chunks.length > 0) return chunks;
       }
     } catch {}
   }
-  return [...store.chunks]
-    .map((chunk) => ({ chunk, score: cosineSimilarity(queryEmbedding, chunk.embedding) }))
-    .filter((result) => result.score >= minScore)
+
+  if (store.chunks.length === 0) return [];
+
+  const scored = store.chunks.map((chunk) => ({
+    chunk,
+    score: cosineSimilarity(queryEmbedding, chunk.embedding),
+  }));
+
+  const filtered = scored.filter((r) => r.score >= minScore);
+  const candidates = filtered.length > 0 ? filtered : scored;
+
+  return candidates
     .sort((a, b) => b.score - a.score)
     .slice(0, topK)
-    .map((result) => result.chunk);
+    .map((r) => r.chunk);
 }
+
 
 
 export async function getVectorDbStatus() {

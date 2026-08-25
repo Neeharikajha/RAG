@@ -6,21 +6,29 @@ export function ContradictionDashboard() {
     useContradictions();
 
   return (
-    <div className="dashboard">
-      <div className="dashboard__header">
-        <p className="dashboard__summary">
+    <div className="flex flex-col gap-6">
+      <div className="flex justify-between items-center">
+        <p className="text-slate-700 text-sm font-medium">
           {contradictions.length === 0
             ? "No contradictions detected yet."
             : `Found ${contradictions.length} contradiction(s) across your documents.`}
         </p>
-        <button onClick={runScan} disabled={isScanning}>
+        <button
+          onClick={runScan}
+          disabled={isScanning}
+          className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm rounded-xl shadow-md shadow-blue-500/20 active:scale-95 disabled:opacity-50 transition-all"
+        >
           {isScanning ? "Scanning…" : "Scan for contradictions"}
         </button>
       </div>
 
-      {error && <p className="error-banner">{error}</p>}
+      {error && (
+        <p className="p-3.5 rounded-xl bg-red-500/15 border border-red-200 text-red-700 text-sm font-medium backdrop-blur-md">
+          {error}
+        </p>
+      )}
 
-      <div className="dashboard__list">
+      <div className="flex flex-col gap-4.5">
         {contradictions.map((c) => (
           <ContradictionCard
             key={c.id}
