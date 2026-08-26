@@ -66,16 +66,14 @@ import { invalidateCachePattern } from "../cache/redis.js";
 import { removeContradictionsForDoc, clearAllContradictions } from "../contradiction/store.js";
 
 export async function deleteDocument(id: string): Promise<void> {
-  const targetDoc = store.documents.find((d) => d.id === id);
   store.documents = store.documents.filter((d) => d.id !== id);
   store.chunks = store.chunks.filter((c) => c.documentId !== id);
   await persist();
-  await removeContradictionsForDoc(id, targetDoc?.fileName);
-  if (store.documents.length < 2) {
+  await removeContradictionsForDoc(id);
+  if (store.documents.length === 0) {
     await clearAllContradictions();
   }
   await invalidateCachePattern("rag:answer:*");
-
 
 
 
