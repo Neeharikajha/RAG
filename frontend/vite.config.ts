@@ -9,6 +9,12 @@ export default defineConfig({
   // Proxies /api/* to the backend during dev so the frontend can call
   // relative paths (e.g. fetch('/api/documents')) without CORS issues.
   server: {
-    proxy: { "/api": "http://localhost:3001" },
+    proxy: {
+      "/api": {
+        target: "http://127.0.0.1:3001",
+        changeOrigin: true,
+      },
+    },
   },
+
 });
