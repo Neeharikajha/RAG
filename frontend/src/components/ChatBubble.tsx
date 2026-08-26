@@ -12,14 +12,18 @@ function sanitizeMarkdown(content: string): string {
   if (!content) return "";
   const lines = content.split("\n");
   const processed = lines.map((line) => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
-      return line.replace(/<br\s*\/?>/gi, "; ");
+    let trimmed = line.trim();
+    if (trimmed.startsWith("|")) {
+      if (!trimmed.endsWith("|")) {
+        trimmed += " |";
+      }
+      return trimmed.replace(/<br\s*\/?>/gi, "; ");
     }
     return line.replace(/<br\s*\/?>/gi, "\n");
   });
   return processed.join("\n");
 }
+
 
 export function ChatBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";

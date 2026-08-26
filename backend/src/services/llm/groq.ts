@@ -18,7 +18,7 @@ export async function generateAnswer(messages: ChatMessage[]): Promise<string> {
       model: GROQ_MODEL,
       messages,
       temperature: 0.2,
-      max_tokens: 512,
+      max_tokens: 2048,
     }),
   });
 
@@ -48,7 +48,7 @@ export async function generateAnswerStream(
       model: GROQ_MODEL,
       messages,
       temperature: 0.2,
-      max_tokens: 512,
+      max_tokens: 2048,
       stream: true,
     }),
   });
