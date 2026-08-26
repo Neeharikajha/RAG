@@ -3,6 +3,7 @@ import type {
   Contradiction,
   ContradictionStatus,
 } from "../../types/contradiction.js";
+import { getDocuments } from "../vectorstore/store.js";
 
 const FILE = "data/contradictions.json";
 let contradictions: Contradiction[] = [];
@@ -50,24 +51,47 @@ export async function upsertContradictions(
   await persist();
 }
 
-
-export async function removeContradictionsForDoc(documentId: string): Promise<void> {
+export async function removeContradictionsForDoc(
+  documentId: string,
+  fileName?: string,
+): Promise<void> {
+  const targetName = fileName?.toLowerCase().trim();
   contradictions = contradictions.filter(
-    (c) => c.statementA.documentId !== documentId && c.statementB.documentId !== documentId,
+    (c) =>
+      c.statementA.documentId !== documentId &&
+      c.statementB.documentId !== documentId &&
+      (!targetName || c.statementA.fileName.toLowerCase().trim() !== targetName) &&
+      (!targetName || c.statementB.fileName.toLowerCase().trim() !== targetName),
   );
   await persist();
 }
 
 export function getAll(): Contradiction[] {
-  return contradictions;
+  const currentDocs = getDocuments();
+  if (currentDocs.length < 2) {
+    return [];
+  }
+
+  const currentDocIds = new Set(currentDocs.map((d) => d.id));
+  const currentFileNames = new Set(
+    currentDocs.map((d) => d.fileName.toLowerCase().trim()),
+  );
+
+  return contradictions.filter((c) => {
+    const hasA =
+      currentDocIds.has(c.statementA.documentId) ||
+      currentFileNames.has(c.statementA.fileName.toLowerCase().trim());
+    const hasB =
+      currentDocIds.has(c.statementB.documentId) ||
+      currentFileNames.has(c.statementB.fileName.toLowerCase().trim());
+    return hasA && hasB;
+  });
 }
 
 export async function clearAllContradictions(): Promise<void> {
   contradictions = [];
   await persist();
 }
-
-
 
 export async function updateStatus(
   id: string,
